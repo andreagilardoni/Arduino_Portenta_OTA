@@ -22,7 +22,6 @@ void lzss_flush();
  **************************************************************************************/
 
 
-// TODO add callback for put char and get char
 // TODO improve documentation
 class LZSSDecoder {
 public:
