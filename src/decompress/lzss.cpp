@@ -161,3 +161,136 @@ void lzss_decode(void)
         }
     }
 }
+
+
+/**************************************************************************************
+   LZSS DECODER CLASS IMPLEMENTATION
+ **************************************************************************************/
+
+// get the number of bits the algorithm will try to get given the state
+int LZSSDecoder::bits_required(LZSSDecoder::FSM_STATES s) {
+    switch(s) {
+    case FSM_0:
+        return 1;
+    case FSM_1:
+        return 8;
+    case FSM_2:
+        return EI;
+    case FSM_3:
+        return EJ;
+    }
+}
+
+LZSSDecoder::LZSSDecoder(std::function<void(const uint8_t)> putc_cbk)
+: put_char_cbk(putc_cbk), state(FSM_0), available_bits(0) {
+    for (int i = 0; i < N - F; i++) buffer[i] = ' ';
+    r = N - F;
+}
+
+LZSSDecoder::status LZSSDecoder::handle_state() {
+    LZSSDecoder::status res = IN_PROGRESS;
+
+    int c = getbit(bits_required(this->state));
+
+    if(c == LZSS_BUFFER_EMPTY) {
+        res = NOT_COMPLETED;
+    } else if (c == LZSS_EOF) {
+        res = DONE;
+        this->state = FSM_EOF;
+    } else {
+        switch(this->state) {
+            case FSM_0:
+                if(c) {
+                    this->state = FSM_1;
+                } else {
+                    this->state = FSM_2;
+                }
+                break;
+            case FSM_1:
+                putc(c);
+                buffer[r++] = c;
+                r &= (N - 1); // equivalent to r = r % N
+
+                this->state = FSM_0;
+                break;
+            case FSM_2:
+                this->i = c;
+                this->state = FSM_3;
+                break;
+            case FSM_3: {
+                int j = c;
+                for (int k = 0; k <= j + 1; k++) { // TODO improve by using memcpy
+                    c = buffer[(this->i + k) & (N - 1)]; // equivalent to buffer[(i+k) % N]
+                    putc(c);
+                    buffer[r++] = c;  r &= (N - 1); // equivalent to r = r % N
+                }
+                this->state = FSM_0;
+
+                break;
+            }
+        }
+    }
+
+    return res;
+}
+
+LZSSDecoder::status LZSSDecoder::decompress(const char* buffer, uint32_t size) {
+    this->in_buffer = (uint8_t*)buffer;
+
+    // I won't ever exceed the (2^32)-1 value, since It is impossible to have a buffer of 512MB on an embedded dev
+    // thus this value fits a 32 bit uint
+    this->available_bits += size*8;
+    status res = IN_PROGRESS;
+
+    while((res = handle_state()) == IN_PROGRESS);
+
+    if(res == NOT_COMPLETED && this->available_bits > 0) {
+        this->save_excess();
+    }
+
+    return res;
+}
+
+int LZSSDecoder::getbit(int n) { // get n bits from buffer
+
+    // check that we have all the available bits required
+    if(in_buffer == nullptr || n > (available_bits+excess_len)) {
+        return LZSS_BUFFER_EMPTY;
+    }
+
+    // get the required bits
+    static int buf, mask=0;
+    int i, x=0;
+
+    // TODO this function couls be improved by extracting bits>1 with a single mask
+    for (i = 0; i < n; i++) {
+        if (mask == 0) {
+            if ((buf = getc()) == LZSS_EOF) return LZSS_EOF;// no need to decrement available_bits
+            mask = 128;
+        }
+        x <<= 1;
+        if (buf & mask) x++;
+        mask >>= 1;
+    }
+    available_bits -= n;
+    return x;
+}
+
+int LZSSDecoder::getc() {
+    int c;
+    if(excess_len > 0) {
+        c = excess_bits;
+        excess_len -= 8;
+    } else {
+        c = *in_buffer;
+        in_buffer++;
+    }
+    return c;
+}
+
+void LZSSDecoder::save_excess() { // TODO Explain that
+    if(this->available_bits >= 8) {
+        this->excess_bits = *this->in_buffer;
+        this->excess_len = 8;
+    }
+}
