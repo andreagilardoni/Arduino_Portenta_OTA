@@ -154,11 +154,14 @@ void setup() {
         return;
     }
 
-    bytes = ftell(download_target);
+    Serial.print("downloaded ");
+    Serial.print(bytes);
+    Serial.print(" bytes ");
+
     elapsed = (millis()-start)/1000.0; // elapsed expressed in seconds
     speed = (bytes/elapsed)/1024;
 
-    Serial.print  (bytes);
+    Serial.print  (ftell(download_target));
     Serial.println(" bytes stored.");
 
     Serial.print("download elapsed ");
