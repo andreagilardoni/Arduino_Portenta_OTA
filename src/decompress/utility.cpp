@@ -125,6 +125,125 @@ int Arduino_Portenta_OTA::download(const char * url, bool const is_https, MbedSo
   return socket->download((char *)url, UPDATE_FILE_NAME_LZSS, is_https);
 }
 
+int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const is_https, MbedSocketClass * socket) {
+  int res=0;
+
+  FILE* decompressed = fopen(UPDATE_FILE_NAME, "wb");
+  OTAHeader ota_header;
+
+  LZSSDecoder decoder([&decompressed](const uint8_t c) {
+    fwrite(&c, 1, 1, decompressed);
+  });
+
+  enum OTA_DOWNLOAD_STATE: uint8_t {
+    OTA_DOWNLOAD_BEGIN=0,
+    // OTA_DOWNLOAD_HEADER,
+    OTA_DOWNLOAD_CRC,
+    OTA_DOWNLOAD_FILE,
+    OTA_DOWNLOAD_ERR
+  };
+
+  // since mbed::Callback requires a function to not exceed a certain size, we group the following parameters in a struct
+  struct {
+    uint32_t crc32 = 0xFFFFFFFF;
+    uint32_t header_copied_bytes=0;
+    OTA_DOWNLOAD_STATE state=OTA_DOWNLOAD_BEGIN;
+  } ota_progress;
+
+  int bytes = socket->download(url, is_https, [&decoder, &ota_header, &ota_progress](const char* buffer, uint32_t size) {
+    // uint8_t *buffer_ptr=(uint8_t*)buffer;
+    for(char* cursor=(char*)buffer; cursor<buffer+size; ) {
+      switch(ota_progress.state) {
+        case OTA_DOWNLOAD_BEGIN: {
+          // read to ota_header.buf
+          // the header could be split into two arrivals, we must handle that
+          uint32_t copied = size < sizeof(ota_header.buf) ? size : sizeof(ota_header.buf);
+          memcpy(ota_header.buf, buffer, copied);
+          cursor += copied; // TODO verify indices
+          ota_progress.header_copied_bytes += copied;
+
+          // when finished go to next state
+          if(sizeof(ota_header.buf) == ota_progress.header_copied_bytes) {
+            ota_progress.state = OTA_DOWNLOAD_CRC;
+          }
+          break;
+        }
+        // case OTA_DOWNLOAD_HEADER:
+        //   // In this step we verify that the header values (except crc) are correct and stop downloading the binary
+        //   break;
+        case OTA_DOWNLOAD_CRC:
+          // start to calculate the crc
+          // add header.magic_number and header.hdr_version
+          ota_progress.crc32 = crc_update(
+              ota_progress.crc32,
+              &(ota_header.header.magic_number),
+              sizeof(ota_header) - offsetof(OTAHeader, header.magic_number) // TODO verify that;
+            );
+
+          // switch payload download state
+          ota_progress.state = OTA_DOWNLOAD_FILE;
+          break;
+        case OTA_DOWNLOAD_FILE:
+          // continue to download the payload, decompressing it and calculate crc
+          decoder.decompress((char*)cursor, size - (cursor-buffer));
+          ota_progress.crc32 = crc_update(
+              ota_progress.crc32,
+              cursor,
+              size - (cursor-buffer)
+            );
+
+          cursor += size - (cursor-buffer); // TODO verify indices
+          break;
+        case OTA_DOWNLOAD_ERR: // error state
+        default:
+          break;
+      }
+    }
+  });
+
+  // if download fails it return a negative error code
+  if(bytes <= 0) {
+    res = bytes;
+    goto exit;
+  }
+
+  // if state is dowload finished and completed correctly the state should be OTA_DOWNLOAD_FILE
+  if(ota_progress.state != OTA_DOWNLOAD_FILE) {
+    res = static_cast<int>(Error::OtaDownload);
+    goto exit;
+  }
+
+  if(ota_header.header.len == (bytes-sizeof(ota_header.buf))) {
+    res = static_cast<int>(Error::OtaHeaderLength);
+    goto exit;
+  }
+
+  // verify magic number: it may be done in the download function and stop teh download immediately
+  if(ota_header.header.magic_number != ARDUINO_PORTENTA_OTA_MAGIC) {
+    res = static_cast<int>(Error::OtaHeaterMagicNumber);
+    goto exit;
+  }
+
+  // finalize CRC and verify it
+  ota_progress.crc32 ^= 0xFFFFFFFF;
+  if(ota_header.header.crc32 != ota_progress.crc32) {
+    res = static_cast<int>(Error::OtaHeaderCrc);
+    goto exit;
+  }
+
+  res = ftell(decompressed);
+
+exit:
+  fclose(decompressed);
+
+  if(res < 0) {
+    remove(UPDATE_FILE_NAME);
+  }
+
+  return res;
+}
+
+
 int Arduino_Portenta_OTA::decompress()
 {
   struct stat stat_buf;

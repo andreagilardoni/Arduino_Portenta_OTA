@@ -103,6 +103,8 @@ class Arduino_Portenta_OTA
      */
     int download(const char * url, bool const is_https, MbedSocketClass * socket = static_cast<MbedSocketClass*>(&WiFi));
     int decompress();
+    int download_and_decompress(const char * url, bool const is_https, MbedSocketClass * socket = static_cast<MbedSocketClass*>(&WiFi));
+
     void setFeedWatchdogFunc(ArduinoPortentaOtaWatchdogResetFuncPointer func);
     void feedWatchdog();
 
