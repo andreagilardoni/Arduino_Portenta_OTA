@@ -182,16 +182,6 @@ void decompress_on_the_fly_cbk(const char* buffer, uint32_t size) {
 }
 
 #define FPUTC_BUF_SIZE 64
-void putc_file(const uint8_t c) { // write a flush function
-    // static char write_buf[FPUTC_BUF_SIZE];
-    // static size_t bytes_written_fputc = 0;
-
-    // write_buf[bytes_written_fputc++] = c;
-
-    // if(bytes_written_fputc == FPUTC_BUF_SIZE) {
-    //     fwrite(write_buf, 1, FPUTC_BUF_SIZE, download_target);
-    //     bytes_written_fputc = 0;
-    // }
-
+void putc_file(const uint8_t c) {
     fwrite(&c, 1, 1, download_target);
 }
