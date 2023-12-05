@@ -79,6 +79,8 @@ private:
 
     // get 1 bit from the available input buffer
     int getbit(int n);
+    // the following 2 are variables used by getbits
+    uint32_t buf, buf_size=0;
 
     enum FSM_STATES: uint8_t {
         FSM_0       = 0,

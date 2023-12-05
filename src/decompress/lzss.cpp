@@ -257,7 +257,6 @@ LZSSDecoder::status LZSSDecoder::decompress(uint8_t* const buffer, uint32_t size
 }
 
 int LZSSDecoder::getbit(int n) { // get n bits from buffer
-    static uint32_t buf, buf_size=0;
     int x=0, c;
 
     // if the local bit buffer doesn't have enough bit get them
