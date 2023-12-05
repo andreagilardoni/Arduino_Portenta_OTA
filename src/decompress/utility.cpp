@@ -195,7 +195,7 @@ int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const i
     goto exit;
   }
 
-  // if state is dowload finished and completed correctly the state should be OTA_DOWNLOAD_FILE
+  // if state is download finished and completed correctly the state should be OTA_DOWNLOAD_FILE
   if(ota_progress.state != OTA_DOWNLOAD_FILE) {
     res = static_cast<int>(Error::OtaDownload);
     goto exit;
@@ -206,7 +206,7 @@ int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const i
     goto exit;
   }
 
-  // verify magic number: it may be done in the download function and stop teh download immediately
+  // verify magic number: it may be done in the download function and stop the download immediately
   if(ota_header.header.magic_number != ARDUINO_PORTENTA_OTA_MAGIC) {
     res = static_cast<int>(Error::OtaHeaterMagicNumber);
     goto exit;

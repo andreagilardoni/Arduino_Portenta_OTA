@@ -67,7 +67,7 @@ private:
     static const int N = (1 << EI);       /* buffer size */
     static const int F = ((1 << EJ) + 1); /* lookahead buffer size */
 
-    // alogirthm specific buffer used to store text that could be later referenced and copied
+    // algorithm specific buffer used to store text that could be later referenced and copied
     uint8_t buffer[N * 2];
 
     // this function gets 1 single char from the input buffer
@@ -90,7 +90,7 @@ private:
         FSM_EOF
     } state;
 
-    // these varialbe are used in a decode session and specific to the old C implementation
+    // these variable are used in a decode session and specific to the old C implementation
     // there is no documentation about their meaning
     int i, r;
 
