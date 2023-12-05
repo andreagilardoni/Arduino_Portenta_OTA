@@ -178,10 +178,9 @@ void loop() {
 }
 
 void decompress_on_the_fly_cbk(const char* buffer, uint32_t size) {
-    decoder->decompress(buffer, size);
+    decoder->decompress((uint8_t*)buffer, size);
 }
 
-#define FPUTC_BUF_SIZE 64
 void putc_file(const uint8_t c) {
     fwrite(&c, 1, 1, download_target);
 }
