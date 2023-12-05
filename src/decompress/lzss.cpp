@@ -181,6 +181,13 @@ int LZSSDecoder::bits_required(LZSSDecoder::FSM_STATES s) {
     }
 }
 
+LZSSDecoder::LZSSDecoder(std::function<int()> getc_cbk, std::function<void(const uint8_t)> putc_cbk)
+: put_char_cbk(putc_cbk), get_char_cbk(getc_cbk), state(FSM_0), available(0) {
+    for (int i = 0; i < N - F; i++) buffer[i] = ' ';
+    r = N - F;
+}
+
+
 LZSSDecoder::LZSSDecoder(std::function<void(const uint8_t)> putc_cbk)
 : put_char_cbk(putc_cbk), state(FSM_0), available_bits(0) {
     for (int i = 0; i < N - F; i++) buffer[i] = ' ';

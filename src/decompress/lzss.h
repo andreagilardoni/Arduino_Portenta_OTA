@@ -22,10 +22,24 @@ void lzss_flush();
  **************************************************************************************/
 
 
-// TODO improve documentation
 class LZSSDecoder {
 public:
-    LZSSDecoder(std::function<void(const uint8_t)>);
+
+    /**
+     * Build an LZSS decoder by providing a callback for storing the decoded bytes
+     * @param putc_cbk: a callback that takes a char and stores it e.g. a callback to fwrite
+     */
+    LZSSDecoder(std::function<void(const uint8_t)> putc_cbk);
+
+    /**
+     * Build an LZSS decoder providing a callback for getting a char and putting a char
+     * in this way you need to call decompress with no parameters
+     * @param putc_cbk: a callback that takes a char and stores it e.g. a callback to fwrite
+     * @param getc_cbk: a callback that returns the next char to consume
+     *                  -1 means EOF, -2 means buffer is temporairly finished
+     */
+    LZSSDecoder(std::function<int()> getc_cbk, std::function<void(const uint8_t)> putc_cbk);
+
     /**
      * this enum describes the result of the computation of a single FSM computation
      * DONE: the decompression is completed
@@ -40,7 +54,7 @@ public:
 
     /**
      * decode the provided buffer until buffer ends, then pause the process
-     * @return 0 if the decompression is completed, 1 if not
+     * @return DONE if the decompression is completed, NOT_COMPLETED if not
      */
     status decompress(const char* buffer, uint32_t size);
 private:
@@ -85,6 +99,7 @@ private:
     int i, r;
 
     std::function<void(const uint8_t)> put_char_cbk=nullptr;
+    std::function<void(const uint8_t)> get_char_cbk=nullptr;
 
     inline void putc(const uint8_t c) { if(put_char_cbk) { put_char_cbk(c); } }
 
