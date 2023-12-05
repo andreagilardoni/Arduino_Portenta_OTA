@@ -216,7 +216,7 @@ LZSSDecoder::status LZSSDecoder::handle_state() {
             case FSM_1:
                 putc(c);
                 buffer[r++] = c;
-                r &= (N - 1); // equivalent to r = r % N
+                r &= (N - 1); // equivalent to r = r % N when N is a power of 2
 
                 this->state = FSM_0;
                 break;
@@ -226,10 +226,16 @@ LZSSDecoder::status LZSSDecoder::handle_state() {
                 break;
             case FSM_3: {
                 int j = c;
-                for (int k = 0; k <= j + 1; k++) { // TODO improve by using memcpy
-                    c = buffer[(this->i + k) & (N - 1)]; // equivalent to buffer[(i+k) % N]
+
+                // This is where the actual decompression takes place: we look into the local buffer for reuse
+                // of byte chunks. This can be improved by means of memcpy and by changing the putc function
+                // into a put_buf function in order to avoid buffering on the other end.
+                // TODO improve this section of code
+                for (int k = 0; k <= j + 1; k++) {
+                    c = buffer[(this->i + k) & (N - 1)]; // equivalent to buffer[(i+k) % N] when N is a power of 2
                     putc(c);
-                    buffer[r++] = c;  r &= (N - 1); // equivalent to r = r % N
+                    buffer[r++] = c;
+                    r &= (N - 1); // equivalent to r = r % N
                 }
                 this->state = FSM_0;
 
