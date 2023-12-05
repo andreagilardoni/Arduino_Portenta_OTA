@@ -136,9 +136,7 @@ int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const i
   });
 
   enum OTA_DOWNLOAD_STATE: uint8_t {
-    OTA_DOWNLOAD_BEGIN=0,
-    // OTA_DOWNLOAD_HEADER,
-    OTA_DOWNLOAD_CRC,
+    OTA_DOWNLOAD_HEADER=0,
     OTA_DOWNLOAD_FILE,
     OTA_DOWNLOAD_ERR
   };
@@ -147,14 +145,13 @@ int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const i
   struct {
     uint32_t crc32 = 0xFFFFFFFF;
     uint32_t header_copied_bytes=0;
-    OTA_DOWNLOAD_STATE state=OTA_DOWNLOAD_BEGIN;
+    OTA_DOWNLOAD_STATE state=OTA_DOWNLOAD_HEADER;
   } ota_progress;
 
   int bytes = socket->download(url, is_https, [&decoder, &ota_header, &ota_progress](const char* buffer, uint32_t size) {
-    // uint8_t *buffer_ptr=(uint8_t*)buffer;
     for(char* cursor=(char*)buffer; cursor<buffer+size; ) {
       switch(ota_progress.state) {
-        case OTA_DOWNLOAD_BEGIN: {
+        case OTA_DOWNLOAD_HEADER: {
           // read to ota_header.buf
           // the header could be split into two arrivals, we must handle that
           uint32_t copied = size < sizeof(ota_header.buf) ? size : sizeof(ota_header.buf);
@@ -164,25 +161,17 @@ int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const i
 
           // when finished go to next state
           if(sizeof(ota_header.buf) == ota_progress.header_copied_bytes) {
-            ota_progress.state = OTA_DOWNLOAD_CRC;
-          }
-          break;
-        }
-        // case OTA_DOWNLOAD_HEADER:
-        //   // In this step we verify that the header values (except crc) are correct and stop downloading the binary
-        //   break;
-        case OTA_DOWNLOAD_CRC:
-          // start to calculate the crc
-          // add header.magic_number and header.hdr_version
-          ota_progress.crc32 = crc_update(
+            ota_progress.state = OTA_DOWNLOAD_FILE;
+
+            ota_progress.crc32 = crc_update(
               ota_progress.crc32,
               &(ota_header.header.magic_number),
               sizeof(ota_header) - offsetof(OTAHeader, header.magic_number) // TODO verify that;
             );
 
-          // switch payload download state
-          ota_progress.state = OTA_DOWNLOAD_FILE;
+          }
           break;
+        }
         case OTA_DOWNLOAD_FILE:
           // continue to download the payload, decompressing it and calculate crc
           decoder.decompress((char*)cursor, size - (cursor-buffer));
@@ -194,9 +183,8 @@ int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const i
 
           cursor += size - (cursor-buffer); // TODO verify indices
           break;
-        case OTA_DOWNLOAD_ERR: // error state
         default:
-          break;
+          ota_progress.state = OTA_DOWNLOAD_ERR;
       }
     }
   });
