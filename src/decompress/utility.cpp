@@ -174,7 +174,7 @@ int Arduino_Portenta_OTA::download_and_decompress(const char * url, bool const i
         }
         case OTA_DOWNLOAD_FILE:
           // continue to download the payload, decompressing it and calculate crc
-          decoder.decompress((char*)cursor, size - (cursor-buffer));
+          decoder.decompress((uint8_t*)cursor, size - (cursor-buffer));
           ota_progress.crc32 = crc_update(
               ota_progress.crc32,
               cursor,
