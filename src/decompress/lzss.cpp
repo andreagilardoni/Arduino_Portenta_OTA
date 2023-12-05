@@ -189,7 +189,7 @@ LZSSDecoder::LZSSDecoder(std::function<int()> getc_cbk, std::function<void(const
 
 
 LZSSDecoder::LZSSDecoder(std::function<void(const uint8_t)> putc_cbk)
-: put_char_cbk(putc_cbk), state(FSM_0), available_bits(0) {
+: put_char_cbk(putc_cbk), state(FSM_0), available(0) {
     for (int i = 0; i < N - F; i++) buffer[i] = ' ';
     r = N - F;
 }
@@ -242,62 +242,57 @@ LZSSDecoder::status LZSSDecoder::handle_state() {
 }
 
 LZSSDecoder::status LZSSDecoder::decompress(const char* buffer, uint32_t size) {
-    this->in_buffer = (uint8_t*)buffer;
+    if(!get_char_cbk) {
+        this->in_buffer = (uint8_t*)buffer;
+        this->available += size;
+    }
 
-    // I won't ever exceed the (2^32)-1 value, since It is impossible to have a buffer of 512MB on an embedded dev
-    // thus this value fits a 32 bit uint
-    this->available_bits += size*8;
     status res = IN_PROGRESS;
 
     while((res = handle_state()) == IN_PROGRESS);
-
-    if(res == NOT_COMPLETED && this->available_bits > 0) {
-        this->save_excess();
-    }
 
     return res;
 }
 
 int LZSSDecoder::getbit(int n) { // get n bits from buffer
+    static uint32_t buf, buf_size=0;
+    int x=0, c;
 
-    // check that we have all the available bits required
-    if(in_buffer == nullptr || n > (available_bits+excess_len)) {
-        return LZSS_BUFFER_EMPTY;
-    }
-
-    // get the required bits
-    static int buf, mask=0;
-    int i, x=0;
-
-    // TODO this function couls be improved by extracting bits>1 with a single mask
-    for (i = 0; i < n; i++) {
-        if (mask == 0) {
-            if ((buf = getc()) == LZSS_EOF) return LZSS_EOF;// no need to decrement available_bits
-            mask = 128;
+    // if the local bit buffer doesn't have enough bit get them
+    while(buf_size < n) {
+        switch(c=getc()) {
+        case LZSS_EOF:
+        case LZSS_BUFFER_EMPTY:
+            return c;
         }
-        x <<= 1;
-        if (buf & mask) x++;
-        mask >>= 1;
+        buf <<= 8;
+
+        buf |= (uint8_t)c;
+        buf_size += sizeof(uint8_t)*8;
     }
-    available_bits -= n;
+
+    // the result is the content of the buffer starting from msb to n successive bits
+    x = buf >> (buf_size-n);
+
+    // remove from the buffer the read bits with a mask
+    buf &= (1<<(buf_size-n))-1;
+
+    buf_size-=n;
+
     return x;
 }
 
 int LZSSDecoder::getc() {
     int c;
-    if(excess_len > 0) {
-        c = excess_bits;
-        excess_len -= 8;
+
+    if(get_char_cbk) {
+        c = get_char_cbk();
+    } else if(in_buffer == nullptr || available == 0) {
+        c = LZSS_BUFFER_EMPTY;
     } else {
         c = *in_buffer;
         in_buffer++;
+        available--;
     }
     return c;
-}
-
-void LZSSDecoder::save_excess() { // TODO Explain that
-    if(this->available_bits >= 8) {
-        this->excess_bits = *this->in_buffer;
-        this->excess_len = 8;
-    }
 }

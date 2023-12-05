@@ -56,7 +56,10 @@ public:
      * decode the provided buffer until buffer ends, then pause the process
      * @return DONE if the decompression is completed, NOT_COMPLETED if not
      */
-    status decompress(const char* buffer, uint32_t size);
+    status decompress(const char* buffer=nullptr, uint32_t size=0);
+
+    static const int LZSS_EOF = -1;
+    static const int LZSS_BUFFER_EMPTY = -2;
 private:
     // TODO provide a way for the user to set these parameters
     static const int EI = 11;             /* typically 10..13 */
@@ -64,22 +67,13 @@ private:
     static const int N = (1 << EI);       /* buffer size */
     static const int F = ((1 << EJ) + 1); /* lookahead buffer size */
 
-    static const int LZSS_EOF = -1;
-    static const int LZSS_BUFFER_EMPTY = -2;
-
     // alogirthm specific buffer used to store text that could be later referenced and copied
     uint8_t buffer[N * 2];
-
-    // it may happen that the buffer provided is not enough and there could be an
-    // excess byte that cannot be handled by the current FSM cycle, we save it in excess_bits
-    void save_excess();
-    uint8_t excess_bits=0;
-    uint8_t excess_len=0; // expressed in number of bits
 
     // this function gets 1 single char from the input buffer
     int getc();
     uint8_t* in_buffer = nullptr;
-    uint32_t available_bits = 0;
+    uint32_t available = 0;
 
     status handle_state();
 
