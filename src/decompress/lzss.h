@@ -56,7 +56,7 @@ public:
      * decode the provided buffer until buffer ends, then pause the process
      * @return DONE if the decompression is completed, NOT_COMPLETED if not
      */
-    status decompress(const char* buffer=nullptr, uint32_t size=0);
+    status decompress(uint8_t* const buffer=nullptr, uint32_t size=0);
 
     static const int LZSS_EOF = -1;
     static const int LZSS_BUFFER_EMPTY = -2;
@@ -93,7 +93,7 @@ private:
     int i, r;
 
     std::function<void(const uint8_t)> put_char_cbk=nullptr;
-    std::function<void(const uint8_t)> get_char_cbk=nullptr;
+    std::function<uint8_t()> get_char_cbk=nullptr;
 
     inline void putc(const uint8_t c) { if(put_char_cbk) { put_char_cbk(c); } }
 

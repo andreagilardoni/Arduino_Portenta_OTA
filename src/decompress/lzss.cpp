@@ -241,15 +241,17 @@ LZSSDecoder::status LZSSDecoder::handle_state() {
     return res;
 }
 
-LZSSDecoder::status LZSSDecoder::decompress(const char* buffer, uint32_t size) {
+LZSSDecoder::status LZSSDecoder::decompress(uint8_t* const buffer, uint32_t size) {
     if(!get_char_cbk) {
-        this->in_buffer = (uint8_t*)buffer;
+        this->in_buffer = buffer;
         this->available += size;
     }
 
     status res = IN_PROGRESS;
 
     while((res = handle_state()) == IN_PROGRESS);
+
+    this->in_buffer = nullptr;
 
     return res;
 }
