@@ -83,6 +83,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: arduino/ArduinoCore-mbed
+          path: ${{ env.ARDUINOCORE_MBED_STAGING_PATH }}
 
       - name: Checkout ArduinoCore-API
         # This step only needed when the Arduino mbed-Enabled Boards platform sourced from the repository is being used
