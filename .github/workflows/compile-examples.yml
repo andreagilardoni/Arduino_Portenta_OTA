@@ -80,6 +80,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout ArduinoCore-mbed
+        if: matrix.board.platform-name == 'arduino:mbed'
+        uses: actions/checkout@v4
+        with:
+          repository: arduino/ArduinoCore-mbed
+          ref: main
+
       - name: Compile examples
         uses: arduino/compile-sketches@main
         with:
