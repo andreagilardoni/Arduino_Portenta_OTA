@@ -36,6 +36,9 @@ jobs:
         board:
           - fqbn: arduino:mbed:envie_m7
             platform-name: arduino:mbed
+            platforms: |
+              - source-path: extras/ArduinoCore-mbed
+                name: arduino:mbed
             libraries: |
               - name: Arduino_DebugUtils
             sketch-paths: |
@@ -47,6 +50,9 @@ jobs:
               - examples/OTA_Qspi_Flash_download_onthefly
           - fqbn: arduino:mbed_nicla:nicla_vision
             platform-name: arduino:mbed_nicla
+            platforms: |
+              - source-path: extras/ArduinoCore-mbed
+                name: arduino:mbed_nicla
             libraries: |
               - name: Arduino_DebugUtils
             sketch-paths: |
@@ -56,6 +62,9 @@ jobs:
               - examples/OTA_Qspi_Flash_download_onthefly
           - fqbn: arduino:mbed_opta:opta
             platform-name: arduino:mbed_opta
+            platforms: |
+              - source-path: extras/ArduinoCore-mbed
+                name: arduino:mbed_opta
             libraries: |
               - name: Arduino_DebugUtils
             sketch-paths: |
@@ -66,6 +75,9 @@ jobs:
               - examples/OTA_Qspi_Flash_download_onthefly
           - fqbn: arduino:mbed_giga:giga
             platform-name: arduino:mbed_giga
+            platforms: |
+              - source-path: extras/ArduinoCore-mbed
+                name: arduino:mbed_giga
             libraries: |
               - name: Arduino_DebugUtils
             sketch-paths: |
